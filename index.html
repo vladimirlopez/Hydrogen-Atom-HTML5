@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Hydrogen Atom Simulation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Interactive Hydrogen Atom Simulation</h1>
+            <p>Explore the quantum mechanical wave functions of the hydrogen atom</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h2>Orbital Controls</h2>
+                
+                <div class="control-group">
+                    <label for="n-quantum">Principal Quantum Number (n):</label>
+                    <select id="n-quantum">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="l-quantum">Angular Momentum (l):</label>
+                    <select id="l-quantum">
+                        <option value="0">0 (s)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="m-quantum">Magnetic Quantum Number (m):</label>
+                    <select id="m-quantum">
+                        <option value="0">0</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="visualization-type">Visualization Type:</label>
+                    <select id="visualization-type">
+                        <option value="3d">3D Probability Density</option>
+                        <option value="2d-cross">2D Cross Section</option>
+                        <option value="radial">Radial Wave Function</option>
+                        <option value="energy">Energy Levels</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="cross-section">Cross Section Plane:</label>
+                    <select id="cross-section">
+                        <option value="xz">XZ Plane</option>
+                        <option value="xy">XY Plane</option>
+                        <option value="yz">YZ Plane</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="opacity">Opacity:</label>
+                    <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.8">
+                    <span id="opacity-value">0.8</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="threshold">Probability Threshold:</label>
+                    <input type="range" id="threshold" min="0.001" max="0.1" step="0.001" value="0.01">
+                    <span id="threshold-value">0.01</span>
+                </div>
+
+                <button id="animate-btn">Animate Rotation</button>
+                <button id="reset-view">Reset View</button>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="visualization-area">
+                <div id="plot-container">
+                    <canvas id="main-canvas" width="800" height="600"></canvas>
+                </div>
+                
+                <div class="info-panel">
+                    <h3 id="orbital-name">1s Orbital</h3>
+                    <div id="orbital-info">
+                        <p><strong>Energy:</strong> <span id="energy-value">-13.6 eV</span></p>
+                        <p><strong>Quantum Numbers:</strong> n=<span id="n-display">1</span>, l=<span id="l-display">0</span>, m=<span id="m-display">0</span></p>
+                        <p><strong>Radial Nodes:</strong> <span id="radial-nodes">0</span></p>
+                        <p><strong>Angular Nodes:</strong> <span id="angular-nodes">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial Section -->
+        <div class="tutorial-section">
+            <h2>Interactive Tutorial</h2>
+            <div class="tutorial-content">
+                <div class="tutorial-step active" id="step-1">
+                    <h3>Step 1: Understanding Quantum Numbers</h3>
+                    <p>The hydrogen atom's electron is described by three quantum numbers:</p>
+                    <ul>
+                        <li><strong>n (Principal):</strong> Determines energy and size</li>
+                        <li><strong>l (Angular Momentum):</strong> Determines shape</li>
+                        <li><strong>m (Magnetic):</strong> Determines orientation</li>
+                    </ul>
+                    <button class="next-step" data-next="2">Next: Energy Levels →</button>
+                </div>
+
+                <div class="tutorial-step" id="step-2">
+                    <h3>Step 2: Energy Levels</h3>
+                    <p>Energy in hydrogen depends only on n: E = -13.6/n² eV</p>
+                    <ul>
+                        <li>n=1: Ground state (-13.6 eV)</li>
+                        <li>n=2: First excited state (-3.4 eV)</li>
+                        <li>Higher n: Higher energy, larger orbitals</li>
+                    </ul>
+                    <button class="prev-step" data-prev="1">← Previous</button>
+                    <button class="next-step" data-next="3">Next: Orbital Shapes →</button>
+                </div>
+
+                <div class="tutorial-step" id="step-3">
+                    <h3>Step 3: Orbital Shapes</h3>
+                    <p>Different l values create different orbital shapes:</p>
+                    <ul>
+                        <li><strong>s orbitals (l=0):</strong> Spherical</li>
+                        <li><strong>p orbitals (l=1):</strong> Dumbbell-shaped</li>
+                        <li><strong>d orbitals (l=2):</strong> Complex, multi-lobed</li>
+                    </ul>
+                    <button class="prev-step" data-prev="2">← Previous</button>
+                    <button class="next-step" data-next="4">Next: Probability Density →</button>
+                </div>
+
+                <div class="tutorial-step" id="step-4">
+                    <h3>Step 4: Probability Density</h3>
+                    <p>The visualization shows where the electron is most likely to be found:</p>
+                    <ul>
+                        <li>Brighter regions = higher probability</li>
+                        <li>Darker regions = lower probability</li>
+                        <li>Nodes = zero probability</li>
+                    </ul>
+                    <button class="prev-step" data-prev="3">← Previous</button>
+                    <button class="start-exploration">Start Exploring! 🚀</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Panel -->
+        <div class="info-section">
+            <h2>Orbital Information</h2>
+            <div class="orbital-details">
+                <div class="detail-card">
+                    <h4>Wave Function</h4>
+                    <p id="wave-function-eq">ψ₁ₛ = (1/√πa₀³) e^(-r/a₀)</p>
+                </div>
+                <div class="detail-card">
+                    <h4>Radial Function</h4>
+                    <p id="radial-function-eq">R₁₀ = 2(1/a₀)^(3/2) e^(-r/a₀)</p>
+                </div>
+                <div class="detail-card">
+                    <h4>Angular Function</h4>
+                    <p id="angular-function-eq">Y₀⁰ = 1/√(4π)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    
+    <!-- Custom Scripts -->
+    <script src="js/quantum-math.js"></script>
+    <script src="js/visualization.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

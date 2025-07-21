@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrogen Atom Simulation - Demo</title>
+    <style>
+        :root {
+            --bg: #0a1a26;
+            --accent: #1cb6c4;
+            --text: #e0e0e0;
+            --text-dim: #aaaaaa;
+            --font: 'Inter', 'Fira Sans', sans-serif;
+            --sim-bg: #08141f;
+            --canvas-bg: #0d2133;
+            --panel-bg: rgba(28, 182, 196, 0.08);
+            --panel-border: rgba(28, 182, 196, 0.2);
+            --button-bg: var(--accent);
+            --button-text: var(--bg);
+            --hover-accent: #15a8b5;
+        }
+        
+        body {
+            font-family: var(--font);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: var(--accent);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .demo-card {
+            background: var(--panel-bg);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--panel-border);
+        }
+        
+        .demo-card h2 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .demo-card p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: var(--text-dim);
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .launch-button {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(28, 182, 196, 0.3);
+        }
+        
+        .launch-button:hover {
+            background: var(--hover-accent);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(28, 182, 196, 0.4);
+        }
+        
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .tech-item {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--panel-border);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        
+        .tech-item h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .quantum-equation {
+            background: var(--canvas-bg);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 14px;
+            text-align: center;
+            margin: 15px 0;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .browser-support {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .browser-item {
+            text-align: center;
+            opacity: 0.8;
+        }
+        
+        .browser-item span {
+            display: block;
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .tech-stack {
+                grid-template-columns: 1fr;
+            }
+            
+            .browser-support {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔬 Hydrogen Atom Simulation</h1>
+        <p>Interactive Quantum Mechanics Visualization</p>
+    </div>
+
+    <div class="demo-card">
+        <h2>🎯 What is this?</h2>
+        <p>
+            An interactive web-based simulation that brings the quantum mechanical world of the hydrogen atom to life. 
+            Explore electron orbitals, wave functions, and probability densities through stunning 3D visualizations 
+            and guided tutorials.
+        </p>
+        
+        <div class="quantum-equation">
+            ψ(r,θ,φ) = R_nl(r) × Y_l^m(θ,φ)
+            <br><small>The hydrogen atom wave function</small>
+        </div>
+        
+        <p style="text-align: center; margin-top: 25px;">
+            <a href="index.html" class="launch-button">🚀 Launch Simulation</a>
+        </p>
+    </div>
+
+    <div class="demo-card">
+        <h2>✨ Key Features</h2>
+        <ul class="feature-list">
+            <li>Real-time 3D orbital visualization with WebGL</li>
+            <li>Interactive quantum number controls (n, l, m)</li>
+            <li>Multiple visualization modes (3D, 2D cross-sections, radial plots)</li>
+            <li>Guided tutorial system for learning quantum mechanics</li>
+            <li>Mathematical equations and physical interpretations</li>
+            <li>Comparison tools for different orbitals</li>
+            <li>Export and screenshot capabilities</li>
+            <li>Fully responsive design for mobile and desktop</li>
+            <li>Accessibility features for screen readers</li>
+            <li>Keyboard shortcuts for power users</li>
+        </ul>
+    </div>
+
+    <div class="demo-card">
+        <h2>🛠️ Technology Stack</h2>
+        <div class="tech-stack">
+            <div class="tech-item">
+                <h3>Three.js</h3>
+                <p>3D graphics and WebGL rendering for immersive orbital visualization</p>
+            </div>
+            <div class="tech-item">
+                <h3>HTML5/CSS3</h3>
+                <p>Modern web standards with responsive design and smooth animations</p>
+            </div>
+            <div class="tech-item">
+                <h3>JavaScript ES6+</h3>
+                <p>Object-oriented architecture with modular quantum math calculations</p>
+            </div>
+            <div class="tech-item">
+                <h3>Canvas API</h3>
+                <p>2D plotting for radial functions and cross-sectional visualizations</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-card">
+        <h2>🎓 Educational Benefits</h2>
+        <p>Perfect for students and educators in physics, chemistry, and quantum mechanics:</p>
+        <ul class="feature-list">
+            <li>Visualize abstract quantum concepts in 3D</li>
+            <li>Understand the relationship between quantum numbers</li>
+            <li>Explore orbital shapes and their physical meanings</li>
+            <li>Learn about energy quantization and electron probability</li>
+            <li>Interactive tutorials with step-by-step guidance</li>
+            <li>Compare different orbitals side by side</li>
+        </ul>
+        
+        <div class="quantum-equation">
+            E_n = -13.6 eV / n²
+            <br><small>Hydrogen energy levels</small>
+        </div>
+    </div>
+
+    <div class="demo-card">
+        <h2>🌐 Browser Compatibility</h2>
+        <p>Works best with modern browsers that support WebGL:</p>
+        
+        <div class="browser-support">
+            <div class="browser-item">
+                <span>🌊</span>
+                <strong>Chrome 80+</strong>
+            </div>
+            <div class="browser-item">
+                <span>🦊</span>
+                <strong>Firefox 75+</strong>
+            </div>
+            <div class="browser-item">
+                <span>🧭</span>
+                <strong>Safari 13+</strong>
+            </div>
+            <div class="browser-item">
+                <span>🔷</span>
+                <strong>Edge 80+</strong>
+            </div>
+        </div>
+        
+        <p style="margin-top: 20px; text-align: center; font-size: 0.9em; opacity: 0.8;">
+            <strong>Requirements:</strong> WebGL support, ES6 JavaScript, and Canvas 2D API
+        </p>
+    </div>
+
+    <div class="demo-card">
+        <h2>🎮 Quick Start Guide</h2>
+        <ol style="line-height: 1.8;">
+            <li><strong>Launch:</strong> Click the "Launch Simulation" button above</li>
+            <li><strong>Tutorial:</strong> Choose "Start Tutorial" for guided learning</li>
+            <li><strong>Explore:</strong> Use quantum number controls to change orbitals</li>
+            <li><strong>Visualize:</strong> Switch between 3D, 2D, and radial plot modes</li>
+            <li><strong>Interact:</strong> Use mouse to rotate, zoom, and explore</li>
+            <li><strong>Learn:</strong> Read the orbital information panel</li>
+        </ol>
+        
+        <p style="background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 8px; border-left: 4px solid #ffd700; margin-top: 20px;">
+            <strong>💡 Tip:</strong> Try keyboard shortcuts like Ctrl+1 for 1s orbital, Ctrl+2 for 2s, etc.
+        </p>
+    </div>
+
+    <div class="demo-card">
+        <h2>🔬 Scientific Accuracy</h2>
+        <p>
+            This simulation uses accurate quantum mechanical calculations based on solutions to the 
+            Schrödinger equation for hydrogen. The visualizations represent actual probability densities 
+            where electrons are most likely to be found.
+        </p>
+        
+        <ul class="feature-list">
+            <li>Exact radial wave functions using associated Laguerre polynomials</li>
+            <li>Proper spherical harmonics for angular components</li>
+            <li>Correct energy level calculations (E = -13.6/n² eV)</li>
+            <li>Accurate node counting and orbital symmetries</li>
+            <li>Physical constants and normalization factors</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 10px;">
+        <p style="margin: 0; opacity: 0.8;">
+            Built with ❤️ for quantum education and scientific visualization
+        </p>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em;">
+            <a href="index.html" class="launch-button" style="padding: 10px 20px; font-size: 16px;">
+                Enter the Quantum World →
+            </a>
+        </p>
+    </div>
+</body>
+</html>
