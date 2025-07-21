@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Orbital Generation</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        button { background: #333; color: #0f0; border: 1px solid #0f0; padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Orbital Generation Debug</h1>
+    <button onclick="test1s()">Test 1s Orbital</button>
+    <button onclick="test2s()">Test 2s Orbital</button>
+    <button onclick="test2p()">Test 2p Orbital</button>
+    <div id="output"></div>
+
+    <script src="js/quantum-math.js"></script>
+    <script>
+        const quantum = new QuantumMath();
+        const output = document.getElementById('output');
+        
+        function log(msg) {
+            output.innerHTML += msg + '<br>';
+            console.log(msg);
+        }
+        
+        function test1s() {
+            output.innerHTML = '<h3>Testing 1s Orbital</h3>';
+            testOrbital(1, 0, 0, 0.001);
+        }
+        
+        function test2s() {
+            output.innerHTML = '<h3>Testing 2s Orbital</h3>';
+            testOrbital(2, 0, 0, 0.0001);
+        }
+        
+        function test2p() {
+            output.innerHTML = '<h3>Testing 2p Orbital</h3>';
+            testOrbital(2, 1, 0, 0.0001);
+        }
+        
+        function testOrbital(n, l, m, threshold) {
+            log(`Testing orbital: n=${n}, l=${l}, m=${m}, threshold=${threshold}`);
+            
+            const maxR = n * n * 8;
+            const resolution = 30;
+            let pointCount = 0;
+            let maxProb = 0;
+            let totalProb = 0;
+            
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < resolution; j++) {
+                    for (let k = 0; k < resolution; k++) {
+                        const x = (i - resolution/2) * maxR / resolution;
+                        const y = (j - resolution/2) * maxR / resolution;
+                        const z = (k - resolution/2) * maxR / resolution;
+
+                        const r = Math.sqrt(x*x + y*y + z*z);
+                        
+                        if (r > 0.1 && r < maxR * 0.8) {
+                            const theta = Math.acos(z / r);
+                            const phi = Math.atan2(y, x);
+                            const probability = quantum.probabilityDensity(r, theta, phi, n, l, m);
+                            
+                            if (probability > threshold && isFinite(probability)) {
+                                pointCount++;
+                            }
+                            
+                            if (probability > maxProb) {
+                                maxProb = probability;
+                            }
+                            
+                            totalProb += probability;
+                        }
+                    }
+                }
+            }
+            
+            log(`Points found: ${pointCount}`);
+            log(`Max probability: ${maxProb.toFixed(8)}`);
+            log(`Average probability: ${(totalProb / (resolution**3)).toFixed(8)}`);
+            log(`Radial function at r=1: ${quantum.radialWaveFunction(1, n, l).toFixed(8)}`);
+            log(`Energy: ${quantum.energyLevel(n).toFixed(3)} eV`);
+            log('---');
+            
+            if (pointCount === 0) {
+                log('❌ NO POINTS FOUND - Try lower threshold');
+                log(`Suggested threshold: ${(maxProb / 10).toFixed(8)}`);
+            } else {
+                log('✅ Points found successfully');
+            }
+        }
+    </script>
+</body>
+</html>

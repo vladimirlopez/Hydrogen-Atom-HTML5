@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrogen Atom Quantum Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #111; color: #0f0; }
+        .orbital { border: 1px solid #333; margin: 10px 0; padding: 10px; }
+        .success { color: #0f0; }
+        .warning { color: #ff0; }
+        .error { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>Hydrogen Atom Quantum Function Test</h1>
+    <div id="results"></div>
+
+    <script src="js/quantum-math.js"></script>
+    <script>
+        const quantum = new QuantumMath();
+        const results = document.getElementById('results');
+        
+        function log(message, className = '') {
+            const div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function testOrbital(n, l, m) {
+            log(`<h3>Testing Orbital: ${n}${['s','p','d','f'][l] || l} (n=${n}, l=${l}, m=${m})</h3>`);
+            
+            // Test validation
+            const valid = quantum.validateQuantumNumbers(n, l, m);
+            log(`Quantum numbers valid: ${valid}`, valid ? 'success' : 'error');
+            
+            if (!valid) return;
+            
+            // Test energy
+            const energy = quantum.energyLevel(n);
+            log(`Energy: ${energy.toFixed(3)} eV`);
+            
+            // Test radial function at maximum probability radius
+            const expectedMaxR = n * n * 1.5; // Approximate
+            let maxProb = 0;
+            let maxR = 0;
+            let totalPoints = 0;
+            
+            // Sample radial function
+            for (let r = 0.1; r <= expectedMaxR * 2; r += 0.2) {
+                const R_nl = quantum.radialWaveFunction(r, n, l);
+                const radialProb = quantum.radialProbabilityDensity(r, n, l);
+                
+                if (radialProb > maxProb) {
+                    maxProb = radialProb;
+                    maxR = r;
+                }
+                
+                if (Math.abs(R_nl) > 1e-8) totalPoints++;
+            }
+            
+            log(`Radial function: ${totalPoints > 0 ? 'OK' : 'FAILED'}`, totalPoints > 0 ? 'success' : 'error');
+            log(`Max radial probability: ${maxProb.toFixed(6)} at r=${maxR.toFixed(2)}`);
+            
+            // Test 3D probability density
+            let points3D = 0;
+            const threshold = 0.0001 / (n * n);
+            const maxRange = Math.min(40, n * n * 8);
+            
+            for (let x = -maxRange; x <= maxRange; x += maxRange/5) {
+                for (let y = -maxRange; y <= maxRange; y += maxRange/5) {
+                    for (let z = -maxRange; z <= maxRange; z += maxRange/5) {
+                        const r = Math.sqrt(x*x + y*y + z*z);
+                        if (r > 0.1) {
+                            const theta = Math.acos(z / r);
+                            const phi = Math.atan2(y, x);
+                            const prob = quantum.probabilityDensity(r, theta, phi, n, l, m);
+                            
+                            if (prob > threshold && isFinite(prob)) {
+                                points3D++;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            log(`3D points found: ${points3D}`, points3D > 0 ? 'success' : 'warning');
+            log(`Threshold used: ${threshold.toFixed(6)}`);
+            log(`Search range: ±${maxRange}`);
+            
+            // Test specific known values
+            if (n === 1 && l === 0) {
+                const prob_1s_origin = quantum.probabilityDensity(1, 0, 0, 1, 0, 0);
+                log(`1s at r=1: ${prob_1s_origin.toFixed(6)} (should be > 0)`, prob_1s_origin > 0 ? 'success' : 'error');
+            }
+            
+            log('<hr style="border-color: #333;">');
+        }
+        
+        // Test all orbitals up to n=4
+        const orbitals = [
+            [1, 0, 0], // 1s
+            [2, 0, 0], // 2s
+            [2, 1, -1], [2, 1, 0], [2, 1, 1], // 2p
+            [3, 0, 0], // 3s
+            [3, 1, -1], [3, 1, 0], [3, 1, 1], // 3p
+            [3, 2, -2], [3, 2, -1], [3, 2, 0], [3, 2, 1], [3, 2, 2], // 3d
+            [4, 0, 0], // 4s
+        ];
+        
+        log('<h2>Testing All Supported Orbitals</h2>');
+        orbitals.forEach(([n, l, m]) => testOrbital(n, l, m));
+        
+        log('<h2>Summary</h2>');
+        log('If you see mostly SUCCESS messages above, the quantum calculations are working correctly.');
+        log('WARNING messages for higher orbitals may indicate the need for lower thresholds.');
+        log('ERROR messages indicate actual calculation problems that need fixing.');
+    </script>
+</body>
+</html>

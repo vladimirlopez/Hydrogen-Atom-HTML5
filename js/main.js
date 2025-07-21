@@ -7,47 +7,85 @@
  */
 
 class HydrogenAtomApp {
-    constructor() {
+    constructor(skipLoadingScreen = false) {
         this.isInitialized = false;
         this.loadingOverlay = null;
+        this.skipLoadingScreen = skipLoadingScreen;
         
         this.init();
     }
 
     async init() {
         try {
-            this.showLoadingScreen();
+            console.log('🚀 Starting Hydrogen Atom Simulation initialization...');
+            
+            // Only show loading screen if not skipped
+            if (!this.skipLoadingScreen) {
+                this.showLoadingScreen();
+            }
             
             // Wait for DOM to be ready
+            console.log('⏳ Waiting for DOM...');
             await this.waitForDOM();
+            console.log('✓ DOM ready');
             
             // Check for Three.js
+            console.log('⏳ Checking Three.js...');
             if (typeof THREE === 'undefined') {
                 throw new Error('Three.js library not loaded');
             }
+            console.log('✓ Three.js available');
             
             // Add OrbitControls to THREE if not already available
+            console.log('⏳ Checking OrbitControls...');
             if (!THREE.OrbitControls) {
+                console.log('⏳ Loading OrbitControls...');
                 await this.loadOrbitControls();
             }
+            console.log('✓ OrbitControls available');
+            
+            // Check for required classes
+            console.log('⏳ Checking required classes...');
+            if (typeof QuantumMath === 'undefined') {
+                throw new Error('QuantumMath class not loaded');
+            }
+            if (typeof HydrogenVisualization === 'undefined') {
+                throw new Error('HydrogenVisualization class not loaded');
+            }
+            if (typeof ControlsManager === 'undefined') {
+                throw new Error('ControlsManager class not loaded');
+            }
+            if (typeof TutorialManager === 'undefined') {
+                throw new Error('TutorialManager class not loaded');
+            }
+            console.log('✓ All required classes available');
             
             // Initialize core components
+            console.log('⏳ Initializing components...');
             this.initializeComponents();
+            console.log('✓ Components initialized');
             
             // Setup application features
+            console.log('⏳ Setting up features...');
             this.setupFeatures();
+            console.log('✓ Features set up');
             
             // Start the application
+            console.log('⏳ Starting application...');
             this.start();
+            console.log('✓ Application started');
             
-            this.hideLoadingScreen();
-            this.isInitialized = true;
-            
-            console.log('🎉 Hydrogen Atom Simulation initialized successfully!');
+            setTimeout(() => {
+                if (!this.skipLoadingScreen) {
+                    this.hideLoadingScreen();
+                }
+                this.isInitialized = true;
+                console.log('🎉 Hydrogen Atom Simulation initialized successfully!');
+            }, 1000);
             
         } catch (error) {
-            console.error('Failed to initialize application:', error);
-            this.showError('Failed to initialize the simulation. Please refresh the page.');
+            console.error('❌ Failed to initialize application:', error);
+            this.showError(`Failed to initialize the simulation: ${error.message}. Please refresh the page.`);
         }
     }
 
@@ -711,26 +749,7 @@ class HydrogenAtomApp {
 }
 
 // Initialize the application when the page loads
-let hydrogenAtomApp;
-
-// Wait for DOM and Three.js to be available
-function initializeApp() {
-    if (typeof THREE !== 'undefined') {
-        hydrogenAtomApp = new HydrogenAtomApp();
-        
-        // Make app globally accessible for debugging
-        window.hydrogenAtomApp = hydrogenAtomApp;
-    } else {
-        console.error('Three.js not loaded. Please ensure the Three.js script is included.');
-    }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+// HydrogenAtomApp class and functions defined above
 
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {

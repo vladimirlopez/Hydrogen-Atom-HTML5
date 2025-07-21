@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Test Version</h1>
+            <div class="orbital-display">
+                <span id="orbital-name">Loading...</span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <aside class="controls-sidebar">
+                <div class="control-section">
+                    <h3>Status</h3>
+                    <div id="status">Initializing...</div>
+                </div>
+            </aside>
+
+            <main class="viz-main">
+                <div class="canvas-container">
+                    <canvas id="main-canvas" width="800" height="600"></canvas>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        function updateStatus(message) {
+            console.log(message);
+            document.getElementById('status').textContent = message;
+        }
+        
+        window.addEventListener('load', () => {
+            updateStatus('Window loaded');
+            
+            if (typeof THREE === 'undefined') {
+                updateStatus('ERROR: Three.js not loaded');
+                return;
+            }
+            updateStatus('Three.js loaded');
+            
+            // Test canvas
+            const canvas = document.getElementById('main-canvas');
+            if (!canvas) {
+                updateStatus('ERROR: Canvas not found');
+                return;
+            }
+            updateStatus('Canvas found');
+            
+            // Test WebGL
+            try {
+                const renderer = new THREE.WebGLRenderer({ canvas });
+                updateStatus('WebGL renderer created');
+                
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+                
+                // Add a simple cube
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                
+                camera.position.z = 5;
+                
+                function animate() {
+                    requestAnimationFrame(animate);
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    renderer.render(scene, camera);
+                }
+                
+                animate();
+                updateStatus('Success! 3D cube rendering');
+                document.getElementById('orbital-name').textContent = 'Test Working';
+                
+            } catch (error) {
+                updateStatus('ERROR: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

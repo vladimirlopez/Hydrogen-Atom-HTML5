@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .debug-log {
+            background: #333;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <div id="debug-output"></div>
+    
+    <script>
+        function log(message) {
+            const output = document.getElementById('debug-output');
+            const div = document.createElement('div');
+            div.className = 'debug-log';
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            output.appendChild(div);
+            console.log(message);
+        }
+        
+        log('Starting debug test...');
+        
+        // Test Three.js loading
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script.onload = () => {
+            log('Three.js loaded successfully');
+            log('THREE object available: ' + (typeof THREE !== 'undefined'));
+            
+            // Test OrbitControls loading
+            const controlsScript = document.createElement('script');
+            controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+            controlsScript.onload = () => {
+                log('OrbitControls loaded successfully');
+                log('THREE.OrbitControls available: ' + (typeof THREE.OrbitControls !== 'undefined'));
+                
+                // Test our custom scripts
+                testCustomScripts();
+            };
+            controlsScript.onerror = () => {
+                log('ERROR: Failed to load OrbitControls');
+            };
+            document.head.appendChild(controlsScript);
+        };
+        script.onerror = () => {
+            log('ERROR: Failed to load Three.js');
+        };
+        document.head.appendChild(script);
+        
+        function testCustomScripts() {
+            log('Testing custom scripts...');
+            
+            const scripts = [
+                'js/quantum-math.js',
+                'js/debug-utils.js',
+                'js/visualization.js',
+                'js/controls.js',
+                'js/tutorial.js'
+            ];
+            
+            let loadedCount = 0;
+            
+            scripts.forEach((src, index) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    log(`✓ Loaded: ${src}`);
+                    loadedCount++;
+                    if (loadedCount === scripts.length) {
+                        testClasses();
+                    }
+                };
+                script.onerror = () => {
+                    log(`✗ Failed to load: ${src}`);
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        function testClasses() {
+            log('Testing class availability...');
+            
+            try {
+                log('QuantumMath: ' + (typeof QuantumMath !== 'undefined' ? '✓' : '✗'));
+                log('HydrogenVisualization: ' + (typeof HydrogenVisualization !== 'undefined' ? '✓' : '✗'));
+                log('ControlsManager: ' + (typeof ControlsManager !== 'undefined' ? '✓' : '✗'));
+                log('TutorialManager: ' + (typeof TutorialManager !== 'undefined' ? '✓' : '✗'));
+                
+                // Try to create instances
+                if (typeof QuantumMath !== 'undefined') {
+                    const qm = new QuantumMath();
+                    log('QuantumMath instance created successfully');
+                }
+                
+            } catch (error) {
+                log('ERROR creating classes: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

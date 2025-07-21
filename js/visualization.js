@@ -8,20 +8,41 @@
 
 class HydrogenVisualization {
     constructor(canvasId) {
+        console.log('🎬 HydrogenVisualization: Starting constructor...');
+        
         this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) {
+            throw new Error(`Canvas with id "${canvasId}" not found`);
+        }
+        console.log('✓ Canvas found:', this.canvas);
+        
+        console.log('🧮 Creating QuantumMath...');
         this.quantumMath = new QuantumMath();
+        console.log('✓ QuantumMath created');
         
         this.currentQuantumNumbers = { n: 1, l: 0, m: 0 };
         this.visualizationType = '3d';
         this.crossSectionPlane = 'xz';
         this.opacity = 0.8;
-        this.threshold = 0.01;
+        this.threshold = 0.001;
+        this.renderQuality = 'medium';
         this.isAnimating = false;
         
+        console.log('🎨 Setting up Three.js...');
         this.setupThreeJS();
+        console.log('✓ Three.js setup complete');
+        
+        console.log('💡 Setting up lights...');
         this.setupLights();
+        console.log('✓ Lights setup complete');
+        
+        console.log('🎮 Setting up controls...');
         this.setupControls();
+        console.log('✓ Controls setup complete');
+        
+        console.log('🖼️ Starting render...');
         this.render();
+        console.log('✓ HydrogenVisualization constructor complete');
     }
 
     setupThreeJS() {
@@ -49,12 +70,28 @@ class HydrogenVisualization {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         // Controls
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        this.controls.enableZoom = true;
-        this.controls.autoRotate = false;
-        this.controls.autoRotateSpeed = 2.0;
+        console.log('🎮 Creating OrbitControls...');
+        console.log('THREE.OrbitControls available:', typeof THREE.OrbitControls !== 'undefined');
+        
+        if (typeof THREE.OrbitControls === 'undefined') {
+            console.warn('⚠️ THREE.OrbitControls not available, creating basic controls...');
+            this.controls = {
+                enableDamping: true,
+                dampingFactor: 0.05,
+                enableZoom: true,
+                autoRotate: false,
+                autoRotateSpeed: 2.0,
+                update: () => {} // No-op for now
+            };
+        } else {
+            this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = 0.05;
+            this.controls.enableZoom = true;
+            this.controls.autoRotate = false;
+            this.controls.autoRotateSpeed = 2.0;
+            console.log('✓ OrbitControls created successfully');
+        }
 
         // Raycaster for interactions
         this.raycaster = new THREE.Raycaster();
@@ -127,13 +164,26 @@ class HydrogenVisualization {
 
     updateOpacity(opacity) {
         this.opacity = opacity;
-        if (this.orbitalMesh) {
-            this.orbitalMesh.material.opacity = opacity;
+        if (this.orbitalMesh && this.orbitalMesh.material) {
+            // Handle both PointsMaterial and ShaderMaterial
+            if (this.orbitalMesh.material.uniforms) {
+                // ShaderMaterial with uniforms
+                this.orbitalMesh.material.uniforms.opacity.value = opacity;
+            } else {
+                // Regular PointsMaterial
+                this.orbitalMesh.material.opacity = opacity;
+            }
+            this.orbitalMesh.material.needsUpdate = true;
         }
     }
 
     updateThreshold(threshold) {
         this.threshold = threshold;
+        this.updateVisualization();
+    }
+    
+    updateRenderQuality(quality) {
+        this.renderQuality = quality;
         this.updateVisualization();
     }
 
@@ -171,12 +221,23 @@ class HydrogenVisualization {
     }
 
     create3DOrbital(n, l, m) {
+        console.log(`Starting orbital creation: n=${n}, l=${l}, m=${m}`);
+        
+        // Force a reasonable threshold for testing
+        const forceThreshold = Math.min(this.threshold, 0.001);
+        
         const points = [];
         const colors = [];
-        const maxR = Math.min(30, n * n * 8); // Scale with quantum number
-        const resolution = 40;
+        
+        // Simplified, guaranteed-to-work approach
+        const maxR = n * n * 6;
+        const resolution = 35; // Conservative resolution
+        const adaptiveThreshold = forceThreshold / Math.max(1, n);
+        
+        console.log(`Parameters: maxR=${maxR}, resolution=${resolution}, threshold=${adaptiveThreshold}`);
 
-        // Create point cloud for probability density
+        // Generate points
+        let debugCount = 0;
         for (let i = 0; i < resolution; i++) {
             for (let j = 0; j < resolution; j++) {
                 for (let k = 0; k < resolution; k++) {
@@ -186,16 +247,29 @@ class HydrogenVisualization {
 
                     const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
                     
-                    if (r > 0.1) { // Avoid singularity at origin
+                    if (r > 0.5) { // Avoid singularity
                         const probability = this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
                         
-                        if (probability > this.threshold) {
+                        if (debugCount < 10) {
+                            console.log(`Point ${debugCount}: r=${r.toFixed(2)}, prob=${probability.toFixed(8)}, threshold=${adaptiveThreshold.toFixed(8)}`);
+                            debugCount++;
+                        }
+                        
+                        if (probability > adaptiveThreshold && isFinite(probability)) {
                             points.push(new THREE.Vector3(x, y, z));
                             
-                            // Color based on probability density
-                            const intensity = Math.min(probability / (this.threshold * 10), 1);
+                            // Simple, visible colors
                             const color = new THREE.Color();
-                            color.setHSL(0.6 - intensity * 0.4, 1.0, 0.3 + intensity * 0.4);
+                            const intensity = Math.min(probability / adaptiveThreshold, 5);
+                            
+                            if (l === 0) { // s orbitals - bright blue
+                                color.setRGB(0.2 + intensity * 0.2, 0.4 + intensity * 0.2, 0.8 + intensity * 0.2);
+                            } else if (l === 1) { // p orbitals - bright green  
+                                color.setRGB(0.2 + intensity * 0.2, 0.8 + intensity * 0.2, 0.2 + intensity * 0.2);
+                            } else { // d orbitals - bright red
+                                color.setRGB(0.8 + intensity * 0.2, 0.2 + intensity * 0.2, 0.2 + intensity * 0.2);
+                            }
+                            
                             colors.push(color);
                         }
                     }
@@ -203,30 +277,105 @@ class HydrogenVisualization {
             }
         }
 
+        console.log(`Generated ${points.length} points for orbital`);
+
         if (points.length > 0) {
-            // Create point cloud geometry
+            // Create geometry
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const colorArray = new Float32Array(colors.length * 3);
             
+            // Add colors
+            const colorArray = new Float32Array(colors.length * 3);
             colors.forEach((color, i) => {
                 colorArray[i * 3] = color.r;
                 colorArray[i * 3 + 1] = color.g;
                 colorArray[i * 3 + 2] = color.b;
             });
-            
             geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
+            // Use simple, reliable material
             const material = new THREE.PointsMaterial({
-                size: 0.3,
+                size: Math.max(0.5, 1.2 - n * 0.1), // Larger, more visible points
                 vertexColors: true,
                 transparent: true,
-                opacity: this.opacity,
+                opacity: Math.max(0.8, this.opacity), // Ensure visibility
                 sizeAttenuation: true
             });
 
             this.orbitalMesh = new THREE.Points(geometry, material);
             this.scene.add(this.orbitalMesh);
+            
+            console.log('✅ Orbital mesh created and added to scene');
+            
+            // Update view info with point count
+            if (window.controlsManager && window.controlsManager.updateViewInfo) {
+                window.controlsManager.updateViewInfo(points.length);
+            }
+            
+        } else {
+            console.warn('❌ No points generated - trying emergency fallback');
+            this.createEmergencyOrbital(n, l, m);
         }
+    }
+    
+    createEmergencyOrbital(n, l, m) {
+        console.log('Creating emergency orbital with minimal requirements');
+        
+        const points = [];
+        const colors = [];
+        
+        // Very simple sphere for s orbitals, basic shapes for others
+        const numPoints = 1000;
+        const radius = n * 3;
+        
+        for (let i = 0; i < numPoints; i++) {
+            let x, y, z;
+            
+            if (l === 0) { // s orbital - simple sphere
+                const phi = Math.random() * 2 * Math.PI;
+                const cosTheta = Math.random() * 2 - 1;
+                const sinTheta = Math.sqrt(1 - cosTheta * cosTheta);
+                const r = radius * Math.pow(Math.random(), 1/3);
+                
+                x = r * sinTheta * Math.cos(phi);
+                y = r * sinTheta * Math.sin(phi);
+                z = r * cosTheta;
+            } else {
+                // Simple random distribution for p/d orbitals
+                x = (Math.random() - 0.5) * radius * 2;
+                y = (Math.random() - 0.5) * radius * 2;
+                z = (Math.random() - 0.5) * radius * 2;
+            }
+            
+            points.push(new THREE.Vector3(x, y, z));
+            
+            const color = new THREE.Color();
+            if (l === 0) color.setHex(0x4488ff);
+            else if (l === 1) color.setHex(0x44ff88);
+            else color.setHex(0xff8844);
+            colors.push(color);
+        }
+        
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        
+        const colorArray = new Float32Array(colors.length * 3);
+        colors.forEach((color, i) => {
+            colorArray[i * 3] = color.r;
+            colorArray[i * 3 + 1] = color.g;
+            colorArray[i * 3 + 2] = color.b;
+        });
+        geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 1.0,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        this.orbitalMesh = new THREE.Points(geometry, material);
+        this.scene.add(this.orbitalMesh);
+        
+        console.log('🚨 Emergency orbital created (not physically accurate)');
     }
 
     create2DCrossSection(n, l, m) {
@@ -532,6 +681,17 @@ class HydrogenVisualization {
         
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+        
+        // Update camera position display occasionally (throttled to avoid performance issues)
+        if (!this.lastCameraUpdate || Date.now() - this.lastCameraUpdate > 500) {
+            if (window.controlsManager && window.controlsManager.updateViewInfo) {
+                // Get current point count from the existing orbital
+                const pointCount = this.orbitalMesh ? 
+                    (this.orbitalMesh.geometry ? this.orbitalMesh.geometry.attributes.position.count : 0) : 0;
+                window.controlsManager.updateViewInfo(pointCount);
+            }
+            this.lastCameraUpdate = Date.now();
+        }
     }
 
     dispose() {

@@ -51,20 +51,22 @@ class QuantumMath {
     }
 
     /**
-     * Calculate the associated Laguerre polynomial
+     * Calculate the associated Laguerre polynomial L_n^alpha(x)
+     * Using the correct recurrence relation for associated Laguerre polynomials
      */
     associatedLaguerre(x, n, alpha) {
         if (n === 0) return 1;
         if (n === 1) return 1 + alpha - x;
         
-        // Use recurrence relation for higher orders
+        // Use the correct recurrence relation for associated Laguerre polynomials
+        // L_{n+1}^{alpha}(x) = [(2n+1+alpha-x)L_n^{alpha}(x) - (n+alpha)L_{n-1}^{alpha}(x)] / (n+1)
         let L0 = 1;
         let L1 = 1 + alpha - x;
         
-        for (let k = 2; k <= n; k++) {
-            const Lk = ((2*k - 1 + alpha - x) * L1 - (k - 1 + alpha) * L0) / k;
+        for (let k = 1; k < n; k++) {
+            const Lk_plus_1 = ((2*k + 1 + alpha - x) * L1 - (k + alpha) * L0) / (k + 1);
             L0 = L1;
-            L1 = Lk;
+            L1 = Lk_plus_1;
         }
         
         return L1;
@@ -72,26 +74,50 @@ class QuantumMath {
 
     /**
      * Calculate the radial wave function R_nl(r)
+     * Using improved numerical stability for higher quantum numbers
      */
     radialWaveFunction(r, n, l) {
         if (r <= 0) return 0;
         
         const rho = 2 * r / (n * this.a0);
         
-        // Normalization constant
-        const norm = Math.sqrt(
-            Math.pow(2 / (n * this.a0), 3) * 
-            this.factorial(n - l - 1) / 
-            (2 * n * this.factorial(n + l))
+        // Improved normalization constant calculation
+        // Using log to avoid overflow for large factorials
+        const logNorm = 0.5 * (
+            3 * Math.log(2 / (n * this.a0)) + 
+            this.logFactorial(n - l - 1) - 
+            Math.log(2 * n) - 
+            this.logFactorial(n + l)
         );
         
         // Laguerre polynomial
         const laguerre = this.associatedLaguerre(rho, n - l - 1, 2 * l + 1);
         
-        // Radial wave function
-        const R_nl = norm * Math.exp(-rho / 2) * Math.pow(rho, l) * laguerre;
+        // Calculate wave function using log to avoid overflow
+        const logRhoTerm = l * Math.log(rho);
+        const expTerm = -rho / 2;
+        
+        // Combine all terms
+        const logResult = logNorm + logRhoTerm + expTerm + Math.log(Math.abs(laguerre));
+        const R_nl = Math.exp(logResult) * Math.sign(laguerre);
+        
+        // Additional check for numerical stability
+        if (!isFinite(R_nl) || isNaN(R_nl)) {
+            return 0;
+        }
         
         return R_nl;
+    }
+    
+    /**
+     * Calculate log factorial to avoid overflow
+     */
+    logFactorial(n) {
+        if (n <= 0) return 0;
+        if (n <= 20) return Math.log(this.factorial(n));
+        
+        // Use Stirling's approximation for large n
+        return n * Math.log(n) - n + 0.5 * Math.log(2 * Math.PI * n);
     }
 
     /**
@@ -117,10 +143,27 @@ class QuantumMath {
      * Calculate the complete hydrogen wave function ψ_nlm(r, θ, φ)
      */
     waveFunction(r, theta, phi, n, l, m) {
+        // Validate quantum numbers
+        if (!this.validateQuantumNumbers(n, l, m)) {
+            console.warn(`Invalid quantum numbers: n=${n}, l=${l}, m=${m}`);
+            return 0;
+        }
+        
         const R_nl = this.radialWaveFunction(r, n, l);
         const Y_lm = this.sphericalHarmonic(theta, phi, l, m);
         
         return R_nl * Y_lm;
+    }
+    
+    /**
+     * Validate quantum numbers
+     */
+    validateQuantumNumbers(n, l, m) {
+        return (
+            Number.isInteger(n) && n >= 1 &&
+            Number.isInteger(l) && l >= 0 && l < n &&
+            Number.isInteger(m) && m >= -l && m <= l
+        );
     }
 
     /**

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Test</title>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial;
+            padding: 20px;
+        }
+        .log {
+            background: #2d2d2d;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        canvas {
+            border: 1px solid #444;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal Loading Test</h1>
+    <div id="log"></div>
+    <canvas id="test-canvas" width="400" height="300"></canvas>
+
+    <script>
+        function log(message, isError = false) {
+            console.log(message);
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = isError ? 'log error' : 'log';
+            entry.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        log('Starting minimal test...');
+
+        // Test 1: Load Three.js
+        const script1 = document.createElement('script');
+        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script1.onload = () => {
+            log('✓ Three.js loaded');
+            testThreeJS();
+        };
+        script1.onerror = () => {
+            log('✗ Failed to load Three.js', true);
+        };
+        document.head.appendChild(script1);
+
+        function testThreeJS() {
+            try {
+                log('Testing Three.js basic functionality...');
+                
+                // Test basic Three.js objects
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, 400/300, 0.1, 1000);
+                const canvas = document.getElementById('test-canvas');
+                const renderer = new THREE.WebGLRenderer({ canvas });
+                
+                log('✓ Basic Three.js objects created');
+                
+                // Test rendering
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                camera.position.z = 5;
+                
+                function animate() {
+                    requestAnimationFrame(animate);
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    renderer.render(scene, camera);
+                }
+                animate();
+                
+                log('✓ Three.js rendering working!');
+                
+                // Now test our custom scripts
+                testCustomScripts();
+                
+            } catch (error) {
+                log('✗ Three.js test failed: ' + error.message, true);
+            }
+        }
+
+        function testCustomScripts() {
+            log('Testing custom scripts...');
+            
+            // Test quantum-math.js
+            const script2 = document.createElement('script');
+            script2.src = 'js/quantum-math.js';
+            script2.onload = () => {
+                log('✓ quantum-math.js loaded');
+                try {
+                    const qm = new QuantumMath();
+                    log('✓ QuantumMath class working');
+                    testVisualization();
+                } catch (error) {
+                    log('✗ QuantumMath failed: ' + error.message, true);
+                }
+            };
+            script2.onerror = () => {
+                log('✗ Failed to load quantum-math.js', true);
+            };
+            document.head.appendChild(script2);
+        }
+
+        function testVisualization() {
+            log('Testing visualization.js...');
+            
+            const script3 = document.createElement('script');
+            script3.src = 'js/visualization.js';
+            script3.onload = () => {
+                log('✓ visualization.js loaded');
+                try {
+                    // Don't create the full visualization yet, just test the class
+                    if (typeof HydrogenVisualization !== 'undefined') {
+                        log('✓ HydrogenVisualization class available');
+                        log('SUCCESS: All basic components working!');
+                    } else {
+                        log('✗ HydrogenVisualization class not found', true);
+                    }
+                } catch (error) {
+                    log('✗ HydrogenVisualization failed: ' + error.message, true);
+                }
+            };
+            script3.onerror = () => {
+                log('✗ Failed to load visualization.js', true);
+            };
+            document.head.appendChild(script3);
+        }
+    </script>
+</body>
+</html>

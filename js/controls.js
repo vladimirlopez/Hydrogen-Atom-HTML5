@@ -50,8 +50,13 @@ class ControlsManager {
 
         document.getElementById('threshold').addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
-            document.getElementById('threshold-value').textContent = value.toFixed(3);
+            document.getElementById('threshold-value').textContent = value.toFixed(4);
             this.visualization.updateThreshold(value);
+        });
+
+        // Quality control
+        document.getElementById('render-quality').addEventListener('change', (e) => {
+            this.visualization.updateRenderQuality(e.target.value);
         });
 
         // Button controls
@@ -61,6 +66,10 @@ class ControlsManager {
 
         document.getElementById('reset-view').addEventListener('click', () => {
             this.visualization.resetView();
+        });
+
+        document.getElementById('capture-screenshot').addEventListener('click', () => {
+            this.captureScreenshot();
         });
 
         // Window resize
@@ -122,8 +131,43 @@ class ControlsManager {
         const l = parseInt(document.getElementById('l-quantum').value);
         const m = parseInt(document.getElementById('m-quantum').value);
 
+        // Auto-adjust threshold based on quantum number
+        this.autoAdjustThreshold(n);
+
         this.visualization.updateQuantumNumbers(n, l, m);
         this.updateInfo();
+    }
+    
+    autoAdjustThreshold(n) {
+        const thresholdSlider = document.getElementById('threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+        
+        // Suggest lower threshold for higher quantum numbers
+        let suggestedThreshold;
+        switch(n) {
+            case 1:
+                suggestedThreshold = 0.005;
+                break;
+            case 2:
+                suggestedThreshold = 0.001;
+                break;
+            case 3:
+                suggestedThreshold = 0.0005;
+                break;
+            case 4:
+                suggestedThreshold = 0.0002;
+                break;
+            default:
+                suggestedThreshold = 0.0001;
+        }
+        
+        // Only auto-adjust if current threshold is too high
+        const currentThreshold = parseFloat(thresholdSlider.value);
+        if (currentThreshold > suggestedThreshold * 2) {
+            thresholdSlider.value = suggestedThreshold;
+            thresholdValue.textContent = suggestedThreshold.toFixed(4);
+            this.visualization.updateThreshold(suggestedThreshold);
+        }
     }
 
     updateVisualizationType(type) {
@@ -166,8 +210,59 @@ class ControlsManager {
         document.getElementById('radial-nodes').textContent = radialNodes;
         document.getElementById('angular-nodes').textContent = angularNodes;
 
+        // Update new stats panel
+        this.updateOrbitalStats(n, l, m);
+
         // Update equations
         this.updateEquations(n, l, m);
+    }
+
+    updateOrbitalStats(n, l, m) {
+        // Most probable distance (Bohr radius * n^2 for hydrogen)
+        const bohrRadius = 0.529 * n * n; // in Angstroms
+        document.getElementById('bohr-radius').textContent = `${bohrRadius.toFixed(2)} Å`;
+
+        // Only update elements that exist in the new simplified layout
+        const sizeElement = document.getElementById('orbital-size');
+        const shapeElement = document.getElementById('orbital-shape');
+        const degeneracyElement = document.getElementById('degeneracy');
+        
+        if (sizeElement) {
+            let sizeDesc = 'Small';
+            if (n >= 2 && n < 4) sizeDesc = 'Medium';
+            else if (n >= 4) sizeDesc = 'Large';
+            sizeElement.textContent = sizeDesc;
+        }
+
+        if (shapeElement) {
+            let shape = 'Spherical';
+            if (l === 1) shape = 'Dumbbell';
+            else if (l === 2) shape = 'Complex (d-orbital)';
+            else if (l === 3) shape = 'Complex (f-orbital)';
+            shapeElement.textContent = shape;
+        }
+
+        if (degeneracyElement) {
+            const degeneracy = 2 * l + 1;
+            degeneracyElement.textContent = degeneracy;
+        }
+    }
+
+    updateViewInfo(pointsCount = 0) {
+        // Update points count
+        document.getElementById('points-count').textContent = pointsCount.toLocaleString();
+
+        // Update camera position if elements exist
+        const camX = document.getElementById('cam-x');
+        const camY = document.getElementById('cam-y');
+        const camZ = document.getElementById('cam-z');
+        
+        if (this.visualization && this.visualization.camera && camX && camY && camZ) {
+            const pos = this.visualization.camera.position;
+            camX.textContent = pos.x.toFixed(1);
+            camY.textContent = pos.y.toFixed(1);
+            camZ.textContent = pos.z.toFixed(1);
+        }
     }
 
     updateEquations(n, l, m) {
@@ -175,9 +270,21 @@ class ControlsManager {
         const radialFunctionEq = this.quantumMath.getRadialFunctionEquation(n, l);
         const angularFunctionEq = this.quantumMath.getAngularFunctionEquation(l, m);
 
-        document.getElementById('wave-function-eq').textContent = waveFunctionEq;
-        document.getElementById('radial-function-eq').textContent = radialFunctionEq;
-        document.getElementById('angular-function-eq').textContent = angularFunctionEq;
+        // Update equation elements only if they exist (optional in dashboard layout)
+        const waveFunctionEl = document.getElementById('wave-function-eq');
+        if (waveFunctionEl) {
+            waveFunctionEl.textContent = waveFunctionEq;
+        }
+        
+        const radialFunctionEl = document.getElementById('radial-function-eq');
+        if (radialFunctionEl) {
+            radialFunctionEl.textContent = radialFunctionEq;
+        }
+        
+        const angularFunctionEl = document.getElementById('angular-function-eq');
+        if (angularFunctionEl) {
+            angularFunctionEl.textContent = angularFunctionEq;
+        }
     }
 
     toggleAnimation() {
@@ -309,8 +416,11 @@ class ControlsManager {
                 (now - this.performanceStats.lastTime)
             );
             
-            document.getElementById('fps-display').textContent = 
-                `FPS: ${this.performanceStats.fps}`;
+            // Update FPS display if element exists
+            const fpsEl = document.getElementById('fps-display');
+            if (fpsEl) {
+                fpsEl.textContent = `FPS: ${this.performanceStats.fps}`;
+            }
             
             this.performanceStats.frameCount = 0;
             this.performanceStats.lastTime = now;
@@ -374,6 +484,62 @@ class ControlsManager {
             console.error('Failed to import state:', error);
             return false;
         }
+    }
+
+    captureScreenshot() {
+        const canvas = document.getElementById('main-canvas');
+        const link = document.createElement('a');
+        
+        // Generate filename with current orbital info
+        const n = document.getElementById('n-quantum').value;
+        const l = document.getElementById('l-quantum').value;
+        const m = document.getElementById('m-quantum').value;
+        const orbitalName = document.getElementById('orbital-name').textContent.replace(' ', '-');
+        
+        link.download = `hydrogen-atom-${orbitalName}-n${n}l${l}m${m}.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show feedback
+        this.showScreenshotFeedback();
+    }
+
+    showScreenshotFeedback() {
+        // Create a temporary feedback element
+        const feedback = document.createElement('div');
+        feedback.textContent = '📸 Screenshot saved!';
+        feedback.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        document.body.appendChild(feedback);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            feedback.style.opacity = '1';
+        });
+        
+        // Remove after 2 seconds
+        setTimeout(() => {
+            feedback.style.opacity = '0';
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    document.body.removeChild(feedback);
+                }
+            }, 300);
+        }, 2000);
     }
 }
 

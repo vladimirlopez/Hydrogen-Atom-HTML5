@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Quantum Functions</title>
+</head>
+<body>
+    <h1>Debugging Quantum Functions</h1>
+    <div id="results"></div>
+
+    <script src="js/quantum-math.js"></script>
+    <script src="js/debug-utils.js"></script>
+    <script>
+        const quantum = new QuantumMath();
+        const results = document.getElementById('results');
+        
+        function testRadialFunction(n, l) {
+            results.innerHTML += `<h3>Testing n=${n}, l=${l}</h3>`;
+            
+            let hasNonZeroValues = false;
+            let maxValue = 0;
+            let maxR = 0;
+            
+            for (let r = 0.1; r <= 30; r += 0.5) {
+                const R_nl = quantum.radialWaveFunction(r, n, l);
+                const prob = quantum.radialProbabilityDensity(r, n, l);
+                
+                if (Math.abs(R_nl) > 1e-10) {
+                    hasNonZeroValues = true;
+                }
+                
+                if (prob > maxValue) {
+                    maxValue = prob;
+                    maxR = r;
+                }
+                
+                if (r <= 10 && r % 2 === 0.5) { // Show selected values
+                    results.innerHTML += `r=${r.toFixed(1)}: R_nl=${R_nl.toFixed(6)}, prob=${prob.toFixed(6)}<br>`;
+                }
+            }
+            
+            results.innerHTML += `<strong>Has non-zero values: ${hasNonZeroValues}</strong><br>`;
+            results.innerHTML += `<strong>Max probability: ${maxValue.toFixed(6)} at r=${maxR.toFixed(1)}</strong><br><br>`;
+            
+            // Debug the quantum numbers using our utility
+            if (typeof debugQuantumNumbers !== 'undefined') {
+                debugQuantumNumbers(n, l, 0);
+            }
+        }
+        
+        // Test different quantum numbers
+        results.innerHTML += '<h2>Testing Radial Wave Functions</h2>';
+        testRadialFunction(1, 0); // 1s
+        testRadialFunction(2, 0); // 2s
+        testRadialFunction(2, 1); // 2p
+        testRadialFunction(3, 0); // 3s
+        testRadialFunction(3, 1); // 3p
+        testRadialFunction(3, 2); // 3d
+        testRadialFunction(4, 0); // 4s
+        
+        // Test probability density in 3D
+        results.innerHTML += '<h2>Testing 3D Probability Density</h2>';
+        for (let n = 1; n <= 3; n++) {
+            for (let l = 0; l < n; l++) {
+                let pointsFound = 0;
+                const threshold = 0.001 / (n * n);
+                
+                for (let x = -10; x <= 10; x += 2) {
+                    for (let y = -10; y <= 10; y += 2) {
+                        for (let z = -10; z <= 10; z += 2) {
+                            const r = Math.sqrt(x*x + y*y + z*z);
+                            if (r > 0.1) {
+                                const theta = Math.acos(z / r);
+                                const phi = Math.atan2(y, x);
+                                const prob = quantum.probabilityDensity(r, theta, phi, n, l, 0);
+                                
+                                if (prob > threshold) {
+                                    pointsFound++;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                results.innerHTML += `n=${n}, l=${l}: Found ${pointsFound} points above threshold ${threshold.toFixed(6)}<br>`;
+            }
+        }
+    </script>
+</body>
+</html>

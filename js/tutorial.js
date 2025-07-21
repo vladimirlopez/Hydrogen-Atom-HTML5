@@ -18,26 +18,35 @@ class TutorialManager {
     }
 
     setupTutorialEvents() {
-        // Next step buttons
-        document.querySelectorAll('.next-step').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const nextStep = parseInt(e.target.dataset.next);
-                this.goToStep(nextStep);
+        // Check if tutorial elements exist before setting up events
+        const nextStepButtons = document.querySelectorAll('.next-step');
+        if (nextStepButtons.length > 0) {
+            nextStepButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const nextStep = parseInt(e.target.dataset.next);
+                    this.goToStep(nextStep);
+                });
             });
-        });
+        }
 
         // Previous step buttons
-        document.querySelectorAll('.prev-step').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const prevStep = parseInt(e.target.dataset.prev);
-                this.goToStep(prevStep);
+        const prevStepButtons = document.querySelectorAll('.prev-step');
+        if (prevStepButtons.length > 0) {
+            prevStepButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const prevStep = parseInt(e.target.dataset.prev);
+                    this.goToStep(prevStep);
+                });
             });
-        });
+        }
 
         // Start exploration button
-        document.querySelector('.start-exploration').addEventListener('click', () => {
-            this.startExploration();
-        });
+        const startExplorationBtn = document.querySelector('.start-exploration');
+        if (startExplorationBtn) {
+            startExplorationBtn.addEventListener('click', () => {
+                this.startExploration();
+            });
+        }
 
         // Auto-advance tutorial based on user actions
         this.setupAutoAdvance();

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OrbitControls Test</title>
+</head>
+<body>
+    <div id="log"></div>
+    <script>
+        function log(msg) {
+            console.log(msg);
+            document.getElementById('log').innerHTML += msg + '<br>';
+        }
+        
+        log('Testing OrbitControls URL...');
+        
+        // Load Three.js
+        const script1 = document.createElement('script');
+        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script1.onload = () => {
+            log('Three.js loaded');
+            
+            // Try the original OrbitControls URL
+            const script2 = document.createElement('script');
+            script2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+            script2.onload = () => {
+                log('OrbitControls loaded from jsdelivr');
+                log('THREE.OrbitControls available: ' + (typeof THREE.OrbitControls !== 'undefined'));
+            };
+            script2.onerror = () => {
+                log('Failed to load from jsdelivr, trying alternate...');
+                
+                // Try alternate URL
+                const script3 = document.createElement('script');
+                script3.src = 'https://threejs.org/examples/js/controls/OrbitControls.js';
+                script3.onload = () => {
+                    log('OrbitControls loaded from threejs.org');
+                    log('THREE.OrbitControls available: ' + (typeof THREE.OrbitControls !== 'undefined'));
+                };
+                script3.onerror = () => {
+                    log('Both URLs failed');
+                };
+                document.head.appendChild(script3);
+            };
+            document.head.appendChild(script2);
+        };
+        script1.onerror = () => {
+            log('Failed to load Three.js');
+        };
+        document.head.appendChild(script1);
+    </script>
+</body>
+</html>

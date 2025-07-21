@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrogen Atom Simulator - Direct</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Hydrogen Atom Simulator</h1>
+            <div class="orbital-display">
+                <span id="orbital-name">1s Orbital</span>
+                <span class="quantum-nums">n=<span id="n-display">1</span>, l=<span id="l-display">0</span>, m=<span id="m-display">0</span></span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <aside class="controls-sidebar">
+                <div class="control-section">
+                    <h3>Quantum Numbers</h3>
+                    <div class="control-row">
+                        <label>n:</label>
+                        <select id="n-quantum">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label>l:</label>
+                        <select id="l-quantum">
+                            <option value="0">0 (s)</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label>m:</label>
+                        <select id="m-quantum">
+                            <option value="0">0</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>View</h3>
+                    <div class="control-row">
+                        <label>Type:</label>
+                        <select id="visualization-type">
+                            <option value="3d">3D</option>
+                            <option value="2d-cross">2D Cross</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Settings</h3>
+                    <div class="control-row">
+                        <label>Opacity:</label>
+                        <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.8">
+                        <span id="opacity-value">0.8</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="animate-btn">🔄 Animate</button>
+                    <button id="reset-view">↻ Reset</button>
+                    <button id="capture-screenshot">📸 Save</button>
+                </div>
+            </aside>
+
+            <main class="viz-main">
+                <div class="canvas-container">
+                    <canvas id="main-canvas" width="800" height="600"></canvas>
+                </div>
+                
+                <div class="info-strip">
+                    <div class="info-item">
+                        <label>Status:</label>
+                        <span id="status">Loading...</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Energy:</label>
+                        <span id="energy-value">-13.6 eV</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Points:</label>
+                        <span id="points-count">0</span>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Simple initialization without complex loading -->
+    <script>
+        function updateStatus(message) {
+            console.log('Status:', message);
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.textContent = message;
+        }
+
+        window.addEventListener('load', () => {
+            updateStatus('Scripts loaded, initializing...');
+            
+            // Simple delay to ensure everything is ready
+            setTimeout(() => {
+                if (typeof THREE === 'undefined') {
+                    updateStatus('ERROR: Three.js not loaded');
+                    return;
+                }
+                
+                updateStatus('Three.js ready');
+                
+                // Load our scripts one by one
+                loadScript('js/quantum-math.js')
+                    .then(() => {
+                        updateStatus('QuantumMath loaded');
+                        return loadScript('js/debug-utils.js');
+                    })
+                    .then(() => {
+                        updateStatus('Debug utils loaded');
+                        return loadScript('js/visualization.js');
+                    })
+                    .then(() => {
+                        updateStatus('Visualization loaded');
+                        return loadScript('js/controls.js');
+                    })
+                    .then(() => {
+                        updateStatus('Controls loaded');
+                        return loadScript('js/tutorial.js');
+                    })
+                    .then(() => {
+                        updateStatus('All scripts loaded, starting app...');
+                        
+                        // Create basic app without complex initialization
+                        try {
+                            const canvas = document.getElementById('main-canvas');
+                            const quantumMath = new QuantumMath();
+                            const visualization = new HydrogenVisualization('main-canvas');
+                            const controls = new ControlsManager(visualization);
+                            
+                            updateStatus('Ready!');
+                            console.log('🎉 Application started successfully!');
+                            
+                            // Make globally accessible
+                            window.visualization = visualization;
+                            window.controls = controls;
+                            
+                        } catch (error) {
+                            updateStatus('ERROR: ' + error.message);
+                            console.error('Initialization error:', error);
+                        }
+                    })
+                    .catch(error => {
+                        updateStatus('Script loading failed');
+                        console.error('Script loading error:', error);
+                    });
+            }, 500);
+        });
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error(`Failed to load ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+</body>
+</html>
