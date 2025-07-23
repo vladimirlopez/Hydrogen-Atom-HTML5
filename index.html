@@ -97,7 +97,7 @@
             <!-- Main Visualization Area -->
             <main class="viz-main">
                 <div class="canvas-container">
-                    <canvas id="main-canvas" width="800" height="600"></canvas>
+                    <canvas id="main-canvas"></canvas>
                 </div>
                 
                 <!-- Bottom Info Bar -->
@@ -163,22 +163,26 @@
                     // Create components directly without HydrogenAtomApp wrapper
                     try {
                         console.log('🎨 Creating visualization...');
+                        
+                        // Create visualization (now async)
                         const visualization = new HydrogenVisualization('main-canvas');
-                        console.log('✓ Visualization created');
                         
-                        console.log('🎮 Creating controls...');
-                        const controlsManager = new ControlsManager(visualization);
-                        console.log('✓ Controls created');
-                        
-                        // Skip tutorial for dashboard layout (designed for different UI)
-                        console.log('📚 Tutorial system skipped (dashboard layout)');
-                        
-                        // Make globally accessible
-                        window.visualization = visualization;
-                        window.controlsManager = controlsManager;
-                        // window.tutorialManager = null; // Not used in dashboard layout
-                        
-                        console.log('🎉 Application components created successfully!');
+                        // Wait a bit for the visualization to initialize before creating controls
+                        setTimeout(() => {
+                            console.log('🎮 Creating controls...');
+                            const controlsManager = new ControlsManager(visualization);
+                            console.log('✓ Controls created');
+                            
+                            // Skip tutorial for dashboard layout (designed for different UI)
+                            console.log('📚 Tutorial system skipped (dashboard layout)');
+                            
+                            // Make globally accessible
+                            window.visualization = visualization;
+                            window.controlsManager = controlsManager;
+                            // window.tutorialManager = null; // Not used in dashboard layout
+                            
+                            console.log('🎉 Application components created successfully!');
+                        }, 1000); // Wait for async initialization
                         
                     } catch (compError) {
                         console.error('❌ Component creation failed:', compError);

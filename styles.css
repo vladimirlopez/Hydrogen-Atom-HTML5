@@ -194,24 +194,29 @@ body {
     display: flex;
     flex-direction: column;
     background: var(--sim-bg);
+    min-height: 500px; /* Ensure minimum height */
+    min-width: 600px;  /* Ensure minimum width */
 }
 
 .canvas-container {
     flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+    position: relative;
     background: var(--sim-bg);
+    min-height: 400px; /* Ensure minimum height for container */
+    overflow: hidden;
 }
 
 #main-canvas {
-    max-width: 100%;
-    max-height: 100%;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
     border-radius: 8px;
     background: var(--canvas-bg);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     border: 1px solid var(--panel-border);
+    display: block;
 }
 
 /* Compact Info Strip */

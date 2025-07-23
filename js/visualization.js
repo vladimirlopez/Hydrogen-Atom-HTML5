@@ -28,6 +28,27 @@ class HydrogenVisualization {
         this.renderQuality = 'medium';
         this.isAnimating = false;
         
+        // Wait for container to be properly laid out
+        this.initializeWhenReady();
+    }
+
+    async initializeWhenReady() {
+        // Wait for layout to stabilize
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Check if container has proper dimensions
+        const container = this.canvas.parentElement;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (attempts < maxAttempts && (container.clientWidth <= 0 || container.clientHeight <= 0)) {
+            console.log(`⏳ Waiting for container layout (attempt ${attempts + 1})...`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        console.log('📐 Final container dimensions:', container.clientWidth, 'x', container.clientHeight);
+        
         console.log('🎨 Setting up Three.js...');
         this.setupThreeJS();
         console.log('✓ Three.js setup complete');
@@ -40,8 +61,21 @@ class HydrogenVisualization {
         this.setupControls();
         console.log('✓ Controls setup complete');
         
+        console.log('⚛️ Generating initial orbital...');
+        
+        // Add a simple test sphere first to verify visibility
+        this.createTestSphere();
+        
+        this.updateVisualization();
+        console.log('✓ Initial orbital generated');
+        
         console.log('🖼️ Starting render...');
         this.render();
+        
+        // Force a final resize to ensure proper canvas dimensions
+        setTimeout(() => this.forceCanvasResize(), 100);
+        setTimeout(() => this.forceCanvasResize(), 500);
+        
         console.log('✓ HydrogenVisualization constructor complete');
     }
 
@@ -50,24 +84,54 @@ class HydrogenVisualization {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0a0a);
 
+        // Get the container dimensions using clientWidth/Height for proper sizing
+        const container = this.canvas.parentElement;
+        
+        // Use the full container size minus the absolute positioning margins (40px total)
+        let width = container.clientWidth - 40; // 20px left + 20px right
+        let height = container.clientHeight - 40; // 20px top + 20px bottom
+        
+        if (width <= 0 || height <= 0) {
+            console.warn('⚠️ Container not properly sized, using fallback dimensions');
+            width = 800;
+            height = 600;
+        }
+
+        console.log('📐 Container dimensions:', container.clientWidth, 'x', container.clientHeight);
+        console.log('📐 Canvas dimensions:', width, 'x', height);
+
         // Camera
         this.camera = new THREE.PerspectiveCamera(
             75, 
-            this.canvas.width / this.canvas.height, 
+            width / height, 
             0.1, 
             1000
         );
         this.camera.position.set(20, 20, 20);
+        this.camera.lookAt(0, 0, 0);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ 
             canvas: this.canvas,
             antialias: true,
-            alpha: true 
+            alpha: false,
+            preserveDrawingBuffer: true
         });
-        this.renderer.setSize(this.canvas.width, this.canvas.height);
+        
+        // Set the canvas size directly
+        this.renderer.setSize(width, height, false);
+        
+        // Configure renderer settings
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        // Set canvas attributes to match the rendered size
+        this.canvas.width = width;
+        this.canvas.height = height;
+        
+        // Clear the renderer to ensure clean start
+        this.renderer.clear();
 
         // Controls
         console.log('🎮 Creating OrbitControls...');
@@ -84,7 +148,7 @@ class HydrogenVisualization {
                 update: () => {} // No-op for now
             };
         } else {
-            this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+            this.controls = new THREE.OrbitControls(this.camera, this.canvas);
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.05;
             this.controls.enableZoom = true;
@@ -96,6 +160,28 @@ class HydrogenVisualization {
         // Raycaster for interactions
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
+
+        // Add resize listener
+        window.addEventListener('resize', () => this.onWindowResize());
+        
+        // Call resize multiple times to ensure proper initial sizing
+        setTimeout(() => this.onWindowResize(), 100);
+        setTimeout(() => this.onWindowResize(), 500);
+        setTimeout(() => this.onWindowResize(), 1000);
+    }
+
+    createTestSphere() {
+        // Create a simple red sphere to test visibility
+        const geometry = new THREE.SphereGeometry(5, 32, 16);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.5,
+            wireframe: true
+        });
+        this.testSphere = new THREE.Mesh(geometry, material);
+        this.scene.add(this.testSphere);
+        console.log('✅ Test sphere added to scene');
     }
 
     setupLights() {
@@ -223,16 +309,16 @@ class HydrogenVisualization {
     create3DOrbital(n, l, m) {
         console.log(`Starting orbital creation: n=${n}, l=${l}, m=${m}`);
         
-        // Force a reasonable threshold for testing
-        const forceThreshold = Math.min(this.threshold, 0.001);
+        // Use a very low threshold to ensure we get points
+        const forceThreshold = 0.00001; // Much lower threshold for testing
         
         const points = [];
         const colors = [];
         
         // Simplified, guaranteed-to-work approach
-        const maxR = n * n * 6;
-        const resolution = 35; // Conservative resolution
-        const adaptiveThreshold = forceThreshold / Math.max(1, n);
+        const maxR = Math.max(10, n * n * 3); // Ensure reasonable size
+        const resolution = 25; // Smaller resolution for faster testing
+        const adaptiveThreshold = forceThreshold;
         
         console.log(`Parameters: maxR=${maxR}, resolution=${resolution}, threshold=${adaptiveThreshold}`);
 
@@ -292,19 +378,26 @@ class HydrogenVisualization {
             });
             geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
-            // Use simple, reliable material
+            // Use simple, reliable material with larger, more visible points
             const material = new THREE.PointsMaterial({
-                size: Math.max(0.5, 1.2 - n * 0.1), // Larger, more visible points
+                size: Math.max(2.0, 3.0 - n * 0.2), // Much larger, more visible points
                 vertexColors: true,
                 transparent: true,
-                opacity: Math.max(0.8, this.opacity), // Ensure visibility
-                sizeAttenuation: true
+                opacity: 1.0, // Full opacity for testing
+                sizeAttenuation: false // Disable size attenuation for consistent visibility
             });
 
             this.orbitalMesh = new THREE.Points(geometry, material);
             this.scene.add(this.orbitalMesh);
             
-            console.log('✅ Orbital mesh created and added to scene');
+            console.log(`✅ Orbital mesh created with ${points.length} points and added to scene`);
+            
+            // Log some sample points for debugging
+            if (points.length > 0) {
+                console.log('Sample points:', points.slice(0, 3));
+                console.log('Orbital mesh position:', this.orbitalMesh.position);
+                console.log('Camera position:', this.camera.position);
+            }
             
             // Update view info with point count
             if (window.controlsManager && window.controlsManager.updateViewInfo) {
@@ -670,10 +763,28 @@ class HydrogenVisualization {
     }
 
     onWindowResize() {
-        const rect = this.canvas.getBoundingClientRect();
-        this.camera.aspect = rect.width / rect.height;
+        const container = this.canvas.parentElement;
+        
+        let width = container.clientWidth - 40; // Account for padding
+        let height = container.clientHeight - 40; // Account for padding
+        
+        // Use minimum dimensions if container is too small
+        if (width <= 0) width = 400;
+        if (height <= 0) height = 300;
+
+        console.log('🔄 Resizing to container:', container.clientWidth, 'x', container.clientHeight);
+        console.log('🔄 Canvas target size:', width, 'x', height);
+
+        // Update camera aspect ratio
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(rect.width, rect.height);
+        
+        // Update renderer size
+        this.renderer.setSize(width, height, false);
+        
+        // Update canvas attributes to match
+        this.canvas.width = width;
+        this.canvas.height = height;
     }
 
     render() {
@@ -692,6 +803,32 @@ class HydrogenVisualization {
             }
             this.lastCameraUpdate = Date.now();
         }
+    }
+
+    // Force canvas to take proper dimensions
+    forceCanvasResize() {
+        const container = this.canvas.parentElement;
+        console.log('🔧 Force resizing canvas container dimensions:', container.clientWidth, 'x', container.clientHeight);
+        
+        // Calculate proper dimensions
+        let width = container.clientWidth - 40;
+        let height = container.clientHeight - 40;
+        
+        if (width <= 0) width = 600;
+        if (height <= 0) height = 400;
+        
+        // Force canvas attributes
+        this.canvas.width = width;
+        this.canvas.height = height;
+        
+        // Update renderer
+        this.renderer.setSize(width, height, false);
+        
+        // Update camera
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        
+        console.log('🔧 Forced canvas size to:', width, 'x', height);
     }
 
     dispose() {
