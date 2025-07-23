@@ -217,6 +217,13 @@ body {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     border: 1px solid var(--panel-border);
     display: block;
+    pointer-events: auto; /* Ensure mouse events work */
+    cursor: grab; /* Show that it's interactive */
+    z-index: 1; /* Ensure it's on top */
+}
+
+#main-canvas:active {
+    cursor: grabbing; /* Show when dragging */
 }
 
 /* Compact Info Strip */

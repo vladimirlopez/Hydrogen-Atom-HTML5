@@ -76,6 +76,9 @@ class HydrogenVisualization {
         setTimeout(() => this.forceCanvasResize(), 100);
         setTimeout(() => this.forceCanvasResize(), 500);
         
+        // Test mouse interactions after everything is set up
+        setTimeout(() => this.testMouseInteraction(), 1000);
+        
         console.log('✓ HydrogenVisualization constructor complete');
     }
 
@@ -136,6 +139,8 @@ class HydrogenVisualization {
         // Controls
         console.log('🎮 Creating OrbitControls...');
         console.log('THREE.OrbitControls available:', typeof THREE.OrbitControls !== 'undefined');
+        console.log('Canvas element:', this.canvas);
+        console.log('Canvas dimensions:', this.canvas.width, 'x', this.canvas.height);
         
         if (typeof THREE.OrbitControls === 'undefined') {
             console.warn('⚠️ THREE.OrbitControls not available, creating basic controls...');
@@ -148,13 +153,49 @@ class HydrogenVisualization {
                 update: () => {} // No-op for now
             };
         } else {
-            this.controls = new THREE.OrbitControls(this.camera, this.canvas);
-            this.controls.enableDamping = true;
-            this.controls.dampingFactor = 0.05;
-            this.controls.enableZoom = true;
-            this.controls.autoRotate = false;
-            this.controls.autoRotateSpeed = 2.0;
-            console.log('✓ OrbitControls created successfully');
+            try {
+                // Try using renderer.domElement which is the recommended approach
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.enableZoom = true;
+                this.controls.enablePan = true;
+                this.controls.enableRotate = true;
+                this.controls.autoRotate = false;
+                this.controls.autoRotateSpeed = 2.0;
+                
+                // Ensure controls are enabled
+                this.controls.enabled = true;
+                
+                // Add mouse event listeners for debugging
+                this.renderer.domElement.addEventListener('mousedown', (e) => {
+                    console.log('🖱️ Canvas mousedown:', e.button, e.clientX, e.clientY);
+                });
+                
+                this.renderer.domElement.addEventListener('wheel', (e) => {
+                    console.log('🎯 Canvas wheel:', e.deltaY);
+                });
+                
+                this.renderer.domElement.addEventListener('contextmenu', (e) => {
+                    e.preventDefault(); // Prevent context menu for right-click panning
+                });
+                
+                console.log('✓ OrbitControls created successfully with renderer.domElement');
+                console.log('Controls object:', this.controls);
+                console.log('Controls enabled:', this.controls.enabled);
+                console.log('Renderer domElement:', this.renderer.domElement);
+            } catch (error) {
+                console.error('❌ Failed to create OrbitControls:', error);
+                // Fallback to basic controls
+                this.controls = {
+                    enableDamping: true,
+                    dampingFactor: 0.05,
+                    enableZoom: true,
+                    autoRotate: false,
+                    autoRotateSpeed: 2.0,
+                    update: () => {}
+                };
+            }
         }
 
         // Raycaster for interactions
@@ -829,6 +870,30 @@ class HydrogenVisualization {
         this.camera.updateProjectionMatrix();
         
         console.log('🔧 Forced canvas size to:', width, 'x', height);
+    }
+
+    // Test mouse interaction functionality
+    testMouseInteraction() {
+        console.log('🧪 Testing mouse interaction...');
+        const domElement = this.renderer.domElement;
+        console.log('Canvas (domElement) pointer events:', getComputedStyle(domElement).pointerEvents);
+        console.log('Canvas z-index:', getComputedStyle(domElement).zIndex);
+        console.log('Canvas position:', getComputedStyle(domElement).position);
+        console.log('Controls enabled:', this.controls.enabled !== false);
+        console.log('DomElement === canvas:', domElement === this.canvas);
+        
+        if (this.controls && typeof this.controls.update === 'function') {
+            console.log('✓ Controls are properly initialized');
+        } else {
+            console.error('❌ Controls are not properly initialized');
+        }
+        
+        // Add a test click handler to see if events reach the canvas
+        domElement.addEventListener('click', () => {
+            console.log('✅ Canvas click detected!');
+        }, { once: true });
+        
+        console.log('🖱️ Click on the canvas to test interaction...');
     }
 
     dispose() {
