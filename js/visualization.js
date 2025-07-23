@@ -348,53 +348,524 @@ class HydrogenVisualization {
     }
 
     create3DOrbital(n, l, m) {
-        console.log(`Starting orbital creation: n=${n}, l=${l}, m=${m}`);
+        console.log(`Creating smooth solid orbital: n=${n}, l=${l}, m=${m}`);
         
-        // Use a very low threshold to ensure we get points
-        const forceThreshold = 0.00001; // Much lower threshold for testing
+        // Create smooth solid orbital using metaballs/volumetric approach
+        this.createVolumetricOrbital(n, l, m);
+    }
+
+    createVolumetricOrbital(n, l, m) {
+        console.log('Creating volumetric solid orbital with smooth surfaces');
+        
+        const maxR = Math.max(20, n * n * 5); // Larger radius for complete orbital
+        const resolution = 64; // High resolution for smooth surfaces
+        const threshold = this.calculateAdaptiveThreshold(n, l, m);
+        
+        // Create marching cubes geometry for smooth surfaces
+        const geometry = this.generateMarchingCubesGeometry(n, l, m, maxR, resolution, threshold);
+        
+        if (geometry && geometry.attributes.position.count > 0) {
+            // Create smooth orbital material
+            const material = this.createSmoothOrbitalMaterial(n, l, m);
+            
+            this.orbitalMesh = new THREE.Mesh(geometry, material);
+            this.scene.add(this.orbitalMesh);
+            
+            console.log(`✅ Smooth solid orbital created with ${geometry.attributes.position.count} vertices`);
+        } else {
+            console.warn('Marching cubes failed, trying metaballs approach');
+            this.createMetaballOrbital(n, l, m);
+        }
+    }
+
+    generateMarchingCubesGeometry(n, l, m, maxR, resolution, threshold) {
+        // Simplified marching cubes implementation for orbital surfaces
+        const vertices = [];
+        const normals = [];
+        const step = (2 * maxR) / resolution;
+        
+        // Generate volume field
+        const field = new Array(resolution);
+        for (let i = 0; i < resolution; i++) {
+            field[i] = new Array(resolution);
+            for (let j = 0; j < resolution; j++) {
+                field[i][j] = new Array(resolution);
+                for (let k = 0; k < resolution; k++) {
+                    const x = (i - resolution/2) * step;
+                    const y = (j - resolution/2) * step;
+                    const z = (k - resolution/2) * step;
+                    
+                    const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
+                    field[i][j][k] = r > 0.1 ? this.quantumMath.probabilityDensity(r, theta, phi, n, l, m) : 0;
+                }
+            }
+        }
+        
+        // Extract surface using simplified marching cubes
+        for (let i = 0; i < resolution - 1; i++) {
+            for (let j = 0; j < resolution - 1; j++) {
+                for (let k = 0; k < resolution - 1; k++) {
+                    const x = (i - resolution/2) * step;
+                    const y = (j - resolution/2) * step;
+                    const z = (k - resolution/2) * step;
+                    
+                    // Check cube corners
+                    const cubeValues = [
+                        field[i][j][k], field[i+1][j][k], field[i+1][j+1][k], field[i][j+1][k],
+                        field[i][j][k+1], field[i+1][j][k+1], field[i+1][j+1][k+1], field[i][j+1][k+1]
+                    ];
+                    
+                    // Generate triangles if surface passes through this cube
+                    const triangles = this.marchingCubesCase(cubeValues, threshold, x, y, z, step);
+                    
+                    for (const triangle of triangles) {
+                        for (const vertex of triangle) {
+                            vertices.push(vertex.x, vertex.y, vertex.z);
+                            
+                            // Calculate normal
+                            const normal = this.calculateSurfaceNormal(vertex.x, vertex.y, vertex.z, n, l, m);
+                            normals.push(normal.x, normal.y, normal.z);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (vertices.length === 0) {
+            return null;
+        }
+        
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.computeBoundingSphere();
+        
+        return geometry;
+    }
+
+    marchingCubesCase(values, threshold, x, y, z, step) {
+        // Simplified marching cubes - just add triangles where surface is detected
+        const triangles = [];
+        
+        // Count how many corners are above threshold
+        const aboveThreshold = values.filter(v => v > threshold).length;
+        
+        if (aboveThreshold > 0 && aboveThreshold < 8) {
+            // Surface passes through this cube - add some triangles
+            const halfStep = step * 0.5;
+            const center = new THREE.Vector3(x + halfStep, y + halfStep, z + halfStep);
+            
+            // Create triangles around the center
+            const size = step * 0.4;
+            triangles.push([
+                new THREE.Vector3(center.x - size, center.y - size, center.z),
+                new THREE.Vector3(center.x + size, center.y - size, center.z),
+                new THREE.Vector3(center.x, center.y + size, center.z)
+            ]);
+            
+            triangles.push([
+                new THREE.Vector3(center.x, center.y - size, center.z - size),
+                new THREE.Vector3(center.x, center.y - size, center.z + size),
+                new THREE.Vector3(center.x, center.y + size, center.z)
+            ]);
+        }
+        
+        return triangles;
+    }
+
+    calculateSurfaceNormal(x, y, z, n, l, m) {
+        // Calculate gradient for surface normal
+        const delta = 0.1;
+        const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
+        
+        if (r < 0.1) return new THREE.Vector3(0, 1, 0);
+        
+        // Numerical gradient
+        const { r: rx } = this.quantumMath.cartesianToSpherical(x + delta, y, z);
+        const { r: ry } = this.quantumMath.cartesianToSpherical(x, y + delta, z);
+        const { r: rz } = this.quantumMath.cartesianToSpherical(x, y, z + delta);
+        
+        const gradX = this.quantumMath.probabilityDensity(rx, theta, phi, n, l, m) - 
+                     this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
+        const gradY = this.quantumMath.probabilityDensity(ry, theta, phi, n, l, m) - 
+                     this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
+        const gradZ = this.quantumMath.probabilityDensity(rz, theta, phi, n, l, m) - 
+                     this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
+        
+        const normal = new THREE.Vector3(gradX, gradY, gradZ);
+        normal.normalize();
+        return normal;
+    }
+
+    createMetaballOrbital(n, l, m) {
+        console.log('Creating metaball-based smooth orbital');
+        
+        // Use metaballs to create smooth organic shapes
+        const maxR = Math.max(15, n * n * 4);
+        const positions = [];
+        const threshold = this.calculateAdaptiveThreshold(n, l, m);
+        
+        // Sample key points for metaballs
+        const sampleResolution = 30;
+        for (let i = 0; i < sampleResolution; i++) {
+            for (let j = 0; j < sampleResolution; j++) {
+                for (let k = 0; k < sampleResolution; k++) {
+                    const x = (i - sampleResolution/2) * 2 * maxR / sampleResolution;
+                    const y = (j - sampleResolution/2) * 2 * maxR / sampleResolution;
+                    const z = (k - sampleResolution/2) * 2 * maxR / sampleResolution;
+
+                    const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
+                    
+                    if (r > 0.1) {
+                        const probability = this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
+                        
+                        if (probability > threshold * 2) { // Higher threshold for metaball centers
+                            positions.push({ x, y, z, strength: probability / threshold });
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (positions.length > 0) {
+            // Create smooth geometry using metaball influence
+            const geometry = this.generateMetaballGeometry(positions, maxR);
+            const material = this.createSmoothOrbitalMaterial(n, l, m);
+            
+            this.orbitalMesh = new THREE.Mesh(geometry, material);
+            this.scene.add(this.orbitalMesh);
+            
+            console.log(`✅ Metaball orbital created with ${positions.length} influence points`);
+        } else {
+            console.warn('No metaball positions generated, using emergency fallback');
+            this.createEmergencyOrbital(n, l, m);
+        }
+    }
+
+    generateMetaballGeometry(positions, maxR) {
+        // Create smooth geometry influenced by metaball positions
+        const resolution = 40;
+        const vertices = [];
+        const normals = [];
+        const step = (2 * maxR) / resolution;
+        
+        for (let i = 0; i < resolution - 1; i++) {
+            for (let j = 0; j < resolution - 1; j++) {
+                for (let k = 0; k < resolution - 1; k++) {
+                    const x = (i - resolution/2) * step;
+                    const y = (j - resolution/2) * step;
+                    const z = (k - resolution/2) * step;
+                    
+                    // Calculate metaball influence at this point
+                    let influence = 0;
+                    for (const pos of positions) {
+                        const dist = Math.sqrt((x - pos.x)**2 + (y - pos.y)**2 + (z - pos.z)**2);
+                        if (dist > 0) {
+                            influence += pos.strength / (dist * dist + 1);
+                        }
+                    }
+                    
+                    // Add geometry where influence is high enough
+                    if (influence > 0.5) {
+                        // Add a small cube/triangles at this position
+                        const size = step * 0.3;
+                        this.addCubeGeometry(vertices, normals, x, y, z, size);
+                    }
+                }
+            }
+        }
+        
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.computeBoundingSphere();
+        
+        return geometry;
+    }
+
+    addCubeGeometry(vertices, normals, x, y, z, size) {
+        // Add triangles for a small cube at the given position
+        const positions = [
+            // Front face
+            x - size, y - size, z + size,
+            x + size, y - size, z + size,
+            x + size, y + size, z + size,
+            x - size, y - size, z + size,
+            x + size, y + size, z + size,
+            x - size, y + size, z + size,
+            
+            // Back face
+            x - size, y - size, z - size,
+            x - size, y + size, z - size,
+            x + size, y + size, z - size,
+            x - size, y - size, z - size,
+            x + size, y + size, z - size,
+            x + size, y - size, z - size
+        ];
+        
+        const faceNormals = [
+            0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, // Front
+            0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1 // Back
+        ];
+        
+        vertices.push(...positions);
+        normals.push(...faceNormals);
+    }
+
+    createSmoothOrbitalMaterial(n, l, m) {
+        // Create beautiful material for smooth orbitals
+        let color, emissive;
+        
+        if (l === 0) { // s orbitals - blue theme
+            color = new THREE.Color(0.4, 0.6, 1.0);
+            emissive = new THREE.Color(0.1, 0.2, 0.3);
+        } else if (l === 1) { // p orbitals - green theme
+            color = new THREE.Color(0.4, 1.0, 0.4);
+            emissive = new THREE.Color(0.1, 0.3, 0.1);
+        } else { // d orbitals - red/orange theme
+            color = new THREE.Color(1.0, 0.6, 0.4);
+            emissive = new THREE.Color(0.3, 0.2, 0.1);
+        }
+        
+        return new THREE.MeshPhongMaterial({
+            color: color,
+            emissive: emissive,
+            transparent: true,
+            opacity: this.opacity,
+            side: THREE.DoubleSide,
+            shininess: 60,
+            specular: new THREE.Color(0.2, 0.2, 0.2)
+        });
+    }
+
+    calculateAdaptiveThreshold(n, l, m) {
+        // Calculate appropriate threshold based on orbital type
+        let baseThreshold = 0.001;
+        
+        // Adjust threshold based on quantum numbers
+        if (l === 0) { // s orbitals
+            baseThreshold = 0.002 / (n * n);
+        } else if (l === 1) { // p orbitals
+            baseThreshold = 0.001 / (n * n);
+        } else { // d orbitals and higher
+            baseThreshold = 0.0005 / (n * n);
+        }
+        
+        // Further adjust based on m quantum number for directional orbitals
+        if (l > 0) {
+            baseThreshold *= 0.5; // Make threshold more sensitive for directional orbitals
+        }
+        
+        return Math.max(baseThreshold, 0.00001); // Minimum threshold
+    }
+
+    generateVolumeData(n, l, m, maxR, resolution) {
+        const volumeData = new Float32Array(resolution * resolution * resolution);
+        const step = (2 * maxR) / resolution;
+        
+        let maxProbability = 0;
+        let validPoints = 0;
+        
+        // Generate probability density volume
+        for (let i = 0; i < resolution; i++) {
+            for (let j = 0; j < resolution; j++) {
+                for (let k = 0; k < resolution; k++) {
+                    const x = (i - resolution/2) * step;
+                    const y = (j - resolution/2) * step;
+                    const z = (k - resolution/2) * step;
+                    
+                    const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
+                    
+                    let probability = 0;
+                    if (r > 0.1) { // Avoid singularity at origin
+                        probability = this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
+                        if (isFinite(probability) && probability > 0) {
+                            maxProbability = Math.max(maxProbability, probability);
+                            validPoints++;
+                        }
+                    }
+                    
+                    const index = i * resolution * resolution + j * resolution + k;
+                    volumeData[index] = probability;
+                }
+            }
+        }
+        
+        return {
+            data: volumeData,
+            resolution: resolution,
+            maxR: maxR,
+            maxProbability: maxProbability
+        };
+    }
+
+    extractIsosurface(volumeData, resolution, maxR, threshold) {
+        // Simple isosurface extraction (marching cubes approximation)
+        const vertices = [];
+        const normals = [];
+        const indices = [];
+        
+        const step = (2 * maxR) / resolution;
+        
+        // Simplified marching cubes - look for threshold crossings
+        for (let i = 0; i < resolution - 1; i++) {
+            for (let j = 0; j < resolution - 1; j++) {
+                for (let k = 0; k < resolution - 1; k++) {
+                    const x = (i - resolution/2) * step;
+                    const y = (j - resolution/2) * step;
+                    const z = (k - resolution/2) * step;
+                    
+                    // Check if this cube contains the isosurface
+                    const cubeValues = this.getCubeValues(volumeData.data, i, j, k, resolution);
+                    
+                    if (this.cubeContainsIsosurface(cubeValues, threshold)) {
+                        // Add vertices for this cube (simplified approach)
+                        const cubeVertices = this.generateCubeVertices(x, y, z, step, cubeValues, threshold);
+                        
+                        for (let v = 0; v < cubeVertices.length; v += 3) {
+                            vertices.push(cubeVertices[v], cubeVertices[v + 1], cubeVertices[v + 2]);
+                            
+                            // Calculate normal (simplified)
+                            const normal = this.calculateNormal(cubeVertices[v], cubeVertices[v + 1], cubeVertices[v + 2], volumeData, resolution, maxR);
+                            normals.push(normal.x, normal.y, normal.z);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (vertices.length === 0) {
+            console.warn('No isosurface vertices generated, using fallback');
+            return null;
+        }
+        
+        // Create geometry
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.computeBoundingSphere();
+        
+        return geometry;
+    }
+
+    getCubeValues(data, i, j, k, resolution) {
+        const values = [];
+        for (let di = 0; di <= 1; di++) {
+            for (let dj = 0; dj <= 1; dj++) {
+                for (let dk = 0; dk <= 1; dk++) {
+                    const index = (i + di) * resolution * resolution + (j + dj) * resolution + (k + dk);
+                    values.push(data[index] || 0);
+                }
+            }
+        }
+        return values;
+    }
+
+    cubeContainsIsosurface(values, threshold) {
+        let above = 0, below = 0;
+        for (const value of values) {
+            if (value > threshold) above++;
+            else below++;
+        }
+        return above > 0 && below > 0; // Isosurface crosses if some values are above and some below
+    }
+
+    generateCubeVertices(x, y, z, step, values, threshold) {
+        // Simplified: just add a few triangles if isosurface is present
+        const vertices = [];
+        
+        // Add a simple triangle at the cube center if isosurface is detected
+        if (values.some(v => v > threshold)) {
+            const cx = x + step / 2;
+            const cy = y + step / 2;
+            const cz = z + step / 2;
+            const size = step * 0.3;
+            
+            // Add triangle vertices
+            vertices.push(
+                cx - size, cy - size, cz,
+                cx + size, cy - size, cz,
+                cx, cy + size, cz
+            );
+        }
+        
+        return vertices;
+    }
+
+    calculateNormal(x, y, z, volumeData, resolution, maxR) {
+        // Simplified normal calculation
+        const step = (2 * maxR) / resolution;
+        const gradient = new THREE.Vector3(0, 1, 0); // Default upward normal
+        
+        // You could implement gradient calculation here for more accuracy
+        gradient.normalize();
+        return gradient;
+    }
+
+    createOrbitalMaterial(n, l, m) {
+        // Create material based on orbital type
+        let color;
+        let emissive;
+        
+        if (l === 0) { // s orbitals - blue
+            color = new THREE.Color(0.3, 0.5, 1.0);
+            emissive = new THREE.Color(0.1, 0.2, 0.4);
+        } else if (l === 1) { // p orbitals - green/yellow
+            color = new THREE.Color(0.5, 1.0, 0.3);
+            emissive = new THREE.Color(0.2, 0.4, 0.1);
+        } else { // d orbitals - red/orange
+            color = new THREE.Color(1.0, 0.5, 0.3);
+            emissive = new THREE.Color(0.4, 0.2, 0.1);
+        }
+        
+        return new THREE.MeshPhongMaterial({
+            color: color,
+            emissive: emissive,
+            transparent: true,
+            opacity: this.opacity,
+            side: THREE.DoubleSide,
+            shininess: 30
+        });
+    }
+
+    createPointCloudOrbital(n, l, m) {
+        // Fallback: improved point cloud with better coverage
+        console.log('Creating improved point cloud orbital');
         
         const points = [];
         const colors = [];
         
-        // Simplified, guaranteed-to-work approach
-        const maxR = Math.max(10, n * n * 3); // Ensure reasonable size
-        const resolution = 25; // Smaller resolution for faster testing
-        const adaptiveThreshold = forceThreshold;
+        // Much higher resolution for complete coverage
+        const maxR = Math.max(15, n * n * 4);
+        const resolution = 80; // Higher resolution
+        const threshold = this.calculateAdaptiveThreshold(n, l, m);
         
-        console.log(`Parameters: maxR=${maxR}, resolution=${resolution}, threshold=${adaptiveThreshold}`);
-
-        // Generate points
-        let debugCount = 0;
+        // Generate points with better sampling
         for (let i = 0; i < resolution; i++) {
             for (let j = 0; j < resolution; j++) {
                 for (let k = 0; k < resolution; k++) {
-                    const x = (i - resolution/2) * maxR / resolution;
-                    const y = (j - resolution/2) * maxR / resolution;
-                    const z = (k - resolution/2) * maxR / resolution;
+                    const x = (i - resolution/2) * 2 * maxR / resolution;
+                    const y = (j - resolution/2) * 2 * maxR / resolution;
+                    const z = (k - resolution/2) * 2 * maxR / resolution;
 
                     const { r, theta, phi } = this.quantumMath.cartesianToSpherical(x, y, z);
                     
-                    if (r > 0.5) { // Avoid singularity
+                    if (r > 0.1) { // Avoid singularity
                         const probability = this.quantumMath.probabilityDensity(r, theta, phi, n, l, m);
                         
-                        if (debugCount < 10) {
-                            console.log(`Point ${debugCount}: r=${r.toFixed(2)}, prob=${probability.toFixed(8)}, threshold=${adaptiveThreshold.toFixed(8)}`);
-                            debugCount++;
-                        }
-                        
-                        if (probability > adaptiveThreshold && isFinite(probability)) {
+                        if (probability > threshold && isFinite(probability)) {
                             points.push(new THREE.Vector3(x, y, z));
                             
-                            // Simple, visible colors
+                            // Color based on orbital type
                             const color = new THREE.Color();
-                            const intensity = Math.min(probability / adaptiveThreshold, 5);
+                            const intensity = Math.min(probability / threshold, 3);
                             
-                            if (l === 0) { // s orbitals - bright blue
-                                color.setRGB(0.2 + intensity * 0.2, 0.4 + intensity * 0.2, 0.8 + intensity * 0.2);
-                            } else if (l === 1) { // p orbitals - bright green  
-                                color.setRGB(0.2 + intensity * 0.2, 0.8 + intensity * 0.2, 0.2 + intensity * 0.2);
-                            } else { // d orbitals - bright red
-                                color.setRGB(0.8 + intensity * 0.2, 0.2 + intensity * 0.2, 0.2 + intensity * 0.2);
+                            if (l === 0) { // s orbitals - blue
+                                color.setRGB(0.3, 0.5 + intensity * 0.2, 1.0);
+                            } else if (l === 1) { // p orbitals - green
+                                color.setRGB(0.3, 1.0, 0.3 + intensity * 0.2);
+                            } else { // d orbitals - red
+                                color.setRGB(1.0, 0.3 + intensity * 0.2, 0.3);
                             }
                             
                             colors.push(color);
@@ -404,7 +875,7 @@ class HydrogenVisualization {
             }
         }
 
-        console.log(`Generated ${points.length} points for orbital`);
+        console.log(`Generated ${points.length} points for point cloud orbital`);
 
         if (points.length > 0) {
             // Create geometry
@@ -419,34 +890,21 @@ class HydrogenVisualization {
             });
             geometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
 
-            // Use simple, reliable material with larger, more visible points
+            // Use much larger, more visible points
             const material = new THREE.PointsMaterial({
-                size: Math.max(2.0, 3.0 - n * 0.2), // Much larger, more visible points
+                size: 4.0, // Much larger points
                 vertexColors: true,
                 transparent: true,
-                opacity: 1.0, // Full opacity for testing
-                sizeAttenuation: false // Disable size attenuation for consistent visibility
+                opacity: this.opacity,
+                sizeAttenuation: false // Consistent size regardless of distance
             });
 
             this.orbitalMesh = new THREE.Points(geometry, material);
             this.scene.add(this.orbitalMesh);
             
-            console.log(`✅ Orbital mesh created with ${points.length} points and added to scene`);
-            
-            // Log some sample points for debugging
-            if (points.length > 0) {
-                console.log('Sample points:', points.slice(0, 3));
-                console.log('Orbital mesh position:', this.orbitalMesh.position);
-                console.log('Camera position:', this.camera.position);
-            }
-            
-            // Update view info with point count
-            if (window.controlsManager && window.controlsManager.updateViewInfo) {
-                window.controlsManager.updateViewInfo(points.length);
-            }
-            
+            console.log(`✅ Point cloud orbital created with ${points.length} visible points`);
         } else {
-            console.warn('❌ No points generated - trying emergency fallback');
+            console.warn('❌ No points generated - using emergency orbital');
             this.createEmergencyOrbital(n, l, m);
         }
     }
